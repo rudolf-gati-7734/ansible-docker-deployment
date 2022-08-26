@@ -1,0 +1,4 @@
+[webservers]
+192.168.10.21
+[webservers:vars]
+http_port=80

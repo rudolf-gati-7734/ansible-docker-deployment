@@ -1,0 +1,72 @@
+---
+
+- hosts: webservers
+  become: true
+  tasks:
+
+  - name: update and upgrade
+    apt:
+      upgrade: yes
+      update_cache: yes
+
+  - name: check if docker repo is added
+    stat:
+      path: /etc/apt/sources.list.d/docker.list
+    register: docker_repo_added
+
+  - name: add docker repo
+    shell:
+      cmd: mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    when: not docker_repo_added.stat.exists
+
+  - name: update and install docker and git
+    apt:
+      name: 
+        - docker-ce 
+        - docker-ce-cli
+        - containerd.io
+        - docker-compose-plugin
+        - git
+      update_cache: yes
+
+  - name: ensure docker group exists
+    group:
+      name: docker
+      state: present
+
+  - name: add vagrant user to docker group
+    user:
+      name: vagrant
+      group: docker
+      append: yes
+
+  - name: download app repo
+    git:
+      repo: https://github.com/docker/getting-started.git
+      dest: /home/vagrant/app
+      force: yes
+
+  - name: copy docker compose template fix
+    template:
+      src: templates/docker-compose.yml.j2
+      dest: /home/vagrant/app/docker-compose.yml
+      owner: vagrant
+
+  - name: docker service is running and enabled
+    service: 
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: run docker compose
+    shell: 
+      cmd: cd /home/vagrant/app/ && docker compose up -d
+
+  - name: wait 10 seconds
+    pause:
+      seconds: 10
+
+  - name: check if app is online
+    uri:
+      url: "http://192.168.10.21"
+      status_code: 200
