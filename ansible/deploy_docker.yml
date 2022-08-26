@@ -40,31 +40,34 @@
       group: docker
       append: yes
 
+  - name: docker service is running and enabled
+    service:
+      name: docker
+      state: started
+      enabled: yes
+
   - name: download app repo
     git:
       repo: https://github.com/docker/getting-started.git
       dest: /home/vagrant/app
       force: yes
+    become_user: vagrant
 
   - name: copy docker compose template fix
     template:
       src: templates/docker-compose.yml.j2
       dest: /home/vagrant/app/docker-compose.yml
       owner: vagrant
-
-  - name: docker service is running and enabled
-    service: 
-      name: docker
-      state: started
-      enabled: yes
+    become_user: vagrant
 
   - name: run docker compose
     shell: 
       cmd: cd /home/vagrant/app/ && docker compose up -d
+    become_user: vagrant
 
-  - name: wait 10 seconds
+  - name: wait 15 seconds
     pause:
-      seconds: 10
+      seconds: 15
 
   - name: check if app is online
     uri:
